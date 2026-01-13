@@ -1,97 +1,121 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+📱 LocaProX
+Sistema de Orçamentos para Locação de Equipamentos
 
-# Getting Started
+<!-- coloque aqui um banner futuramente, se quiser -->
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+📌 Descrição
 
-## Step 1: Start Metro
+O LocaProX é um aplicativo mobile desenvolvido em React Native (sem Expo) com foco em empresas de locação de equipamentos.
+Criado para ser flexível, rápido e fácil de usar, o app permite gerar orçamentos de modo totalmente offline, utilizando banco de dados local (SQLite) e uma interface moderna que prioriza eficiência e clareza.
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+Embora inicialmente voltado para locação de equipamentos de eventos (som, iluminação, painéis de LED), o app foi planejado para ser genérico o suficiente para abranger outros ramos como construção civil, máquinas industriais, ferramentas e muito mais.
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+🚀 Principais Funcionalidades (MVP)
 
-```sh
-# Using npm
-npm start
+🧑‍🤝‍🧑 Cadastro e gerenciamento de clientes
 
-# OR using Yarn
-yarn start
-```
+🎛 Cadastro de equipamentos
 
-## Step 2: Build and run your app
+📝 Criação rápida de orçamentos
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+💾 Banco local SQLite (funciona 100% offline)
 
-### Android
+🎨 Interface moderna e intuitiva
 
-```sh
-# Using npm
-npm run android
+📱 Suporte inicial para Android, com futura expansão para iOS
 
-# OR using Yarn
-yarn android
-```
+🧩 Tecnologias Utilizadas
 
-### iOS
+React Native CLI
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+TypeScript
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+SQLite (offline-first)
 
-```sh
-bundle install
-```
+React Navigation
 
-Then, and every time you update your native dependencies, run:
+Styled Components ou NativeWind (a depender da escolha final)
 
-```sh
-bundle exec pod install
-```
+Arquitetura modular preparada para sincronização futura com backend
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+📦 Instalação e Execução
 
-```sh
-# Using npm
-npm run ios
+1. Clonar o repositório
+   git clone https://github.com/seuusuario/locaprox.git
+   cd locaprox
 
-# OR using Yarn
-yarn ios
-```
+2. Instalar dependências
+   yarn install
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+3. Executar no Android
+   yarn android
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+4. (Opcional) Executar no iOS
+   cd ios
+   pod install
+   cd ..
+   yarn ios
 
-## Step 3: Modify your app
+⚠️ iOS só poderá ser compilado em macOS.
 
-Now that you have successfully run the app, let's make changes!
+📁 Estrutura do Projeto (Sugestão)
+src/
+assets/
+components/
+screens/
+navigation/
+database/
+services/
+hooks/
+utils/
+App.tsx
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+🗺️ Roadmap
+MVP
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+Cadastro de clientes
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+Cadastro de equipamentos
 
-## Congratulations! :tada:
+Criação de orçamentos
 
-You've successfully run and modified your React Native App. :partying_face:
+Banco local SQLite
 
-### Now what?
+Tema visual LocaProX
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+Geração de PDF (versão simples)
 
-# Troubleshooting
+Tela de listagem e detalhes do orçamento
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+Versões Futuras
 
-# Learn More
+Sincronização com servidor remoto
 
-To learn more about React Native, take a look at the following resources:
+Dashboard administrativo (web)
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+Multiusuário com permissões
+
+Envio de orçamento via WhatsApp/Email direto pelo app
+
+Controle de estoque
+
+Templates personalizáveis de orçamento
+
+Monetização via Play Store / App Store
+
+🎨 Identidade Visual
+
+Nome: LocaProX
+Conceito: moderno, confiável, tecnológico
+Paleta base: azul petróleo + turquesa neon + cinza neutro
+
+A identidade visual será evoluída ao longo do desenvolvimento.
+
+🛠️ Contribuindo
+
+Sinta-se livre para abrir issues e PRs.
+Sugestões de melhoria são sempre bem-vindas!
+
+📄 Licença
+
+Este projeto está sob a licença MIT — consulte o arquivo LICENSE para mais detalhes.

@@ -5,8 +5,10 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  NativeModules,
   Platform,
   Pressable,
+  Share,
   ScrollView,
   StyleSheet,
   Text,
@@ -40,6 +42,7 @@ import {
   toCurrency,
   todayBrDate,
 } from '../utils/format';
+import { buildRentalPdfFileName, buildRentalPdfHtml } from '../utils/pdfTemplate';
 
 type RentalFormScreenProps = NativeStackScreenProps<RootStackParamList, 'RentalForm'>;
 
@@ -86,6 +89,24 @@ type DateTimePickerAndroidModule = {
   open: (options: DateTimePickerOpenOptions) => void;
 };
 
+type GeneratePdfFn = (options: {
+  html: string;
+  fileName?: string;
+  directory?: string;
+}) => Promise<{ filePath?: string }>;
+
+type LegacyHtmlToPdfModule = {
+  convert: (options: {
+    html: string;
+    fileName?: string;
+    directory?: string;
+  }) => Promise<{ filePath?: string }>;
+};
+
+type FileShareNativeModule = {
+  shareFile: (filePath: string, mimeType?: string, chooserTitle?: string) => Promise<void>;
+};
+
 const loadDateTimePickerAndroid = (): DateTimePickerAndroidModule | null => {
   try {
     const module = require('@react-native-community/datetimepicker') as {
@@ -99,6 +120,49 @@ const loadDateTimePickerAndroid = (): DateTimePickerAndroidModule | null => {
 };
 
 const nativeDateTimePickerAndroid = loadDateTimePickerAndroid();
+
+const loadGeneratePdf = (): GeneratePdfFn | null => {
+  try {
+    const module = require('react-native-html-to-pdf') as {
+      generatePDF?: GeneratePdfFn;
+    };
+
+    if (typeof module.generatePDF === 'function') {
+      return module.generatePDF;
+    }
+  } catch {
+    // Keeps fallback handling for environments where the package is missing/unlinked.
+  }
+
+  try {
+    const nativeModule = require('react-native').NativeModules as {
+      RNHTMLtoPDF?: LegacyHtmlToPdfModule;
+      HtmlToPdf?: LegacyHtmlToPdfModule;
+    };
+
+    if (nativeModule.RNHTMLtoPDF?.convert) {
+      return nativeModule.RNHTMLtoPDF.convert.bind(nativeModule.RNHTMLtoPDF);
+    }
+
+    if (nativeModule.HtmlToPdf?.convert) {
+      return nativeModule.HtmlToPdf.convert.bind(nativeModule.HtmlToPdf);
+    }
+  } catch {
+    // No legacy module available.
+  }
+
+  return null;
+};
+
+const loadFileShareNativeModule = (): FileShareNativeModule | null => {
+  const nativeModule = (NativeModules as { FileShareModule?: FileShareNativeModule }).FileShareModule;
+
+  if (!nativeModule || typeof nativeModule.shareFile !== 'function') {
+    return null;
+  }
+
+  return nativeModule;
+};
 
 const parseBrDate = (value: string): Date | null => {
   const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
@@ -162,6 +226,9 @@ export const RentalFormScreen = ({ navigation, route }: RentalFormScreenProps): 
   const [equipments, setEquipments] = useState<Equipment[]>([]);
   const [pricingRules, setPricingRules] = useState<PricingRules>(suggestedRules);
   const [currency, setCurrency] = useState<CurrencyCode>('BRL');
+  const [companyName, setCompanyName] = useState('');
+  const [companyDocument, setCompanyDocument] = useState('');
+  const [companyLogoUri, setCompanyLogoUri] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<number | null>(
     isEditMode ? null : rentalFormDraft?.selectedClientId ?? null,
   );
@@ -199,6 +266,7 @@ export const RentalFormScreen = ({ navigation, route }: RentalFormScreenProps): 
   const [hasLoadedEditData, setHasLoadedEditData] = useState(!isEditMode);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isClientSelectOpen, setIsClientSelectOpen] = useState(false);
   const [isEquipmentPickerVisible, setIsEquipmentPickerVisible] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
@@ -219,6 +287,9 @@ export const RentalFormScreen = ({ navigation, route }: RentalFormScreenProps): 
       setEquipments(equipmentsList);
       setPricingRules(settings.pricingRules);
       setCurrency(settings.currency);
+      setCompanyName(settings.companyName);
+      setCompanyDocument(settings.companyDocument);
+      setCompanyLogoUri(settings.companyLogoUri);
 
       if (isEditMode && rentalId && !hasLoadedEditData) {
         const rental = await rentalService.getById(rentalId);
@@ -461,50 +532,50 @@ export const RentalFormScreen = ({ navigation, route }: RentalFormScreenProps): 
     );
   };
 
-  const onSave = async (): Promise<void> => {
+  const validateRentalForm = useCallback((): boolean => {
     if (!selectedClientId) {
       Alert.alert('Validacao', 'Selecione um cliente.');
-      return;
+      return false;
     }
 
     if (items.length === 0) {
       Alert.alert('Validacao', 'Selecione ao menos um equipamento.');
-      return;
+      return false;
     }
 
     if (!isValidBrDate(startDate) || !isValidBrDate(endDate)) {
       Alert.alert('Validacao', 'Use o formato de data dia/mes/ano (dd/mm/aaaa).');
-      return;
+      return false;
     }
 
     if (!isValidTimeHHmm(startTime) || !isValidTimeHHmm(endTime)) {
       Alert.alert('Validacao', 'Use o formato de hora hora:minuto (HH:mm).');
-      return;
+      return false;
     }
 
     if (compareBrDateTime(startDate, startTime, endDate, endTime) === 1) {
       Alert.alert('Validacao', 'A data/hora de inicio nao pode ser maior que a de termino.');
-      return;
+      return false;
     }
 
     if (deliveryMode === 'delivery' && !deliveryAddress.trim()) {
       Alert.alert('Validacao', 'Informe o endereco de entrega.');
-      return;
+      return false;
     }
 
     if (deliveryMode === 'delivery' && normalizedFreightValue < 0) {
       Alert.alert('Validacao', 'Informe um valor de frete valido.');
-      return;
+      return false;
     }
 
     if (status === 'quote' && !quoteValidUntil.trim()) {
       Alert.alert('Validacao', 'Informe a validade do orcamento.');
-      return;
+      return false;
     }
 
     if (status === 'quote' && !isValidBrDate(quoteValidUntil)) {
       Alert.alert('Validacao', 'Use o formato de data dia/mes/ano (dd/mm/aaaa) para validade.');
-      return;
+      return false;
     }
 
     if (status === 'quote') {
@@ -512,7 +583,7 @@ export const RentalFormScreen = ({ navigation, route }: RentalFormScreenProps): 
 
       if (!validityDate) {
         Alert.alert('Validacao', 'Informe uma validade de orcamento valida.');
-        return;
+        return false;
       }
 
       const today = new Date();
@@ -520,12 +591,37 @@ export const RentalFormScreen = ({ navigation, route }: RentalFormScreenProps): 
 
       if (validityDate.getTime() < today.getTime()) {
         Alert.alert('Validacao', 'A validade do orcamento nao pode ser anterior a hoje.');
-        return;
+        return false;
       }
     }
 
     if (total <= 0) {
       Alert.alert('Validacao', 'O total da locacao deve ser maior que zero.');
+      return false;
+    }
+
+    return true;
+  }, [
+    deliveryAddress,
+    deliveryMode,
+    endDate,
+    endTime,
+    items.length,
+    normalizedFreightValue,
+    quoteValidUntil,
+    selectedClientId,
+    startDate,
+    startTime,
+    status,
+    total,
+  ]);
+
+  const onSave = async (): Promise<void> => {
+    if (!validateRentalForm()) {
+      return;
+    }
+
+    if (!selectedClientId) {
       return;
     }
 
@@ -573,9 +669,115 @@ export const RentalFormScreen = ({ navigation, route }: RentalFormScreenProps): 
     }
   };
 
+  const onGeneratePdf = async (): Promise<void> => {
+    const generatePdf = loadGeneratePdf();
+
+    if (!generatePdf) {
+      Alert.alert(
+        'Recurso indisponivel',
+        'Instale react-native-html-to-pdf e gere um novo build para exportar PDF.',
+      );
+      return;
+    }
+
+    if (!validateRentalForm()) {
+      return;
+    }
+
+    if (!selectedClient) {
+      Alert.alert('Validacao', 'Selecione um cliente para gerar o PDF.');
+      return;
+    }
+
+    setIsGeneratingPdf(true);
+
+    try {
+      const itemRows = items.map(item => {
+        const equipmentValue =
+          equipments.find(equipment => equipment.id === item.equipmentId)?.equipmentValue ?? 0;
+
+        return {
+          equipmentName: item.equipmentName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          equipmentValue,
+          lineTotal: item.quantity * item.unitPrice,
+        };
+      });
+
+      const html = buildRentalPdfHtml({
+        companyName,
+        companyDocument,
+        companyLogoUri,
+        clientName: selectedClient.name,
+        clientDocument: selectedClient.document ?? '',
+        clientPhone: selectedClient.phone ?? '',
+        generatedAt: `${todayBrDate()} ${nowHHmm()}`,
+        startDate,
+        startTime,
+        endDate,
+        endTime,
+        status,
+        quoteValidUntil,
+        deliveryMode,
+        deliveryAddress,
+        freightValue: normalizedFreightValue,
+        notes,
+        currency,
+        items: itemRows,
+        subtotal,
+        total,
+      });
+
+      const fileName = buildRentalPdfFileName(selectedClient.name, status);
+      const output = await generatePdf({
+        html,
+        fileName,
+        directory: 'Documents',
+      });
+      const filePath = output.filePath?.trim();
+
+      if (!filePath) {
+        Alert.alert('Erro', 'Nao foi possivel gerar o arquivo PDF.');
+        return;
+      }
+
+      if (Platform.OS === 'android') {
+        const fileShareModule = loadFileShareNativeModule();
+
+        if (!fileShareModule) {
+          Alert.alert(
+            'Recurso indisponivel',
+            'Modulo de compartilhamento de arquivo nao encontrado. Gere um novo build Android.',
+          );
+          return;
+        }
+
+        await fileShareModule.shareFile(filePath, 'application/pdf', 'Compartilhar PDF');
+      } else {
+        const shareUrl = filePath.startsWith('file://') ? filePath : `file://${filePath}`;
+
+        await Share.share({
+          title: 'LocaProX PDF',
+          url: shareUrl,
+        });
+      }
+    } catch {
+      Alert.alert('Erro', 'Nao foi possivel gerar ou compartilhar o PDF.');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   const handleSavePress = (): void => {
     onSave().catch(() => {
       // onSave already reports and handles failures.
+    });
+  };
+
+  const handleGeneratePdfPress = (): void => {
+    onGeneratePdf().catch(() => {
+      // onGeneratePdf already reports and handles failures.
     });
   };
 
@@ -1101,9 +1303,19 @@ export const RentalFormScreen = ({ navigation, route }: RentalFormScreenProps): 
       </View>
 
       <Pressable
-        style={[styles.saveButton, isSaving && styles.disabledButton]}
+        style={[styles.pdfButton, isGeneratingPdf && styles.disabledButton]}
+        onPress={handleGeneratePdfPress}
+        disabled={isGeneratingPdf || isSaving || clients.length === 0 || equipments.length === 0}
+        hitSlop={BUTTON_HIT_SLOP}>
+        <Text style={styles.pdfButtonText}>
+          {isGeneratingPdf ? 'Gerando PDF...' : 'Gerar PDF e Compartilhar'}
+        </Text>
+      </Pressable>
+
+      <Pressable
+        style={[styles.saveButton, (isSaving || isGeneratingPdf) && styles.disabledButton]}
         onPress={handleSavePress}
-        disabled={isSaving || clients.length === 0 || equipments.length === 0}
+        disabled={isSaving || isGeneratingPdf || clients.length === 0 || equipments.length === 0}
         hitSlop={BUTTON_HIT_SLOP}>
         <Text style={styles.saveButtonText}>
           {isSaving ? 'Salvando...' : isEditMode ? 'Atualizar Locacao' : 'Salvar Locacao'}
@@ -1612,6 +1824,22 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 16,
     fontWeight: '700',
+  },
+  pdfButton: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    marginTop: 2,
+  },
+  pdfButtonText: {
+    color: colors.primary,
+    fontWeight: '700',
+    fontSize: 14,
   },
   saveButton: {
     borderRadius: 10,

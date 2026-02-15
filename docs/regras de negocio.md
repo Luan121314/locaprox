@@ -36,6 +36,7 @@
     - Deve permitir editar uma locação já criada, permitindo alterar o cliente, equipamento, data de início, data de término, modalidade de entrega ou retirada, endereço de entrega e valor do frete.
     - Deve permitir selecionar o status da locação, como "Em Andamento", "Concluído", "Cancelada" e "Orçamento".
     - Em caso de orçamento deve ter um campo para validade do orçamento, onde o usuário deve selecionar a data de validade do orçamento, e o app deve considerar como cancelado o orçamento que ultrapassar a data de validade sem ser convertido no status de "concluído", e deve mostrar um aviso para o usuário sobre a expiração do orçamento.
+    - Com os campos necessários preenchidos o app deve permitir gerar um PDF exportável com os dados da locação, incluindo os dados do cliente, equipamento, datas, modalidade de entrega ou retirada, endereço de entrega, valor do frete e o valor total da locação. O PDF deve seguir um template pré-definido, e deve ser possível compartilhar o PDF gerado por meio de aplicativos de compartilhamento disponíveis no dispositivo.
 
 # Regas do APP
 

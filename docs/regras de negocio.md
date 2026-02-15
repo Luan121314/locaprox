@@ -10,7 +10,8 @@
             <!-- - O idioma selecionado deve ser aplicado em todo o app, incluindo os textos exibidos no PDF exportavel. -->
     - Empresa:  neste sub item deve ter
         - Permitir colocar o nome da empresa, que será exibido no PDF exportavel.
-        - Permitir anexar o logo da empresa, que será exibido no PDF exportavel.
+        - Permitir selecionar uma imagem como logo da empresa, que será exibido no PDF exportavel.
+        - Deve permitir colocar o cpf/cnpj da empresa.
 
     - Notificação: neste sub item deve ter
         - Permitir configurar notificações para lembrar o usuário sobre o inicio e término das locações, com opções de tempo para receber a notificação (ex: 1 dia antes, 1 hora antes, etc).

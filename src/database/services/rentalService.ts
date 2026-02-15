@@ -124,6 +124,27 @@ const applyQuoteExpirationRules = async (rentals: RentalListItem[]): Promise<Ren
   });
 };
 
+const expireQuoteIfNeeded = async (
+  rentalId: number,
+  status: RentalStatus,
+  quoteValidUntil: string | null,
+): Promise<RentalStatus> => {
+  if (!isQuoteExpired(quoteValidUntil, status)) {
+    return status;
+  }
+
+  await execute(
+    `
+    UPDATE rentals
+    SET status = ?, updated_at = ?
+    WHERE id = ?;
+    `,
+    ['canceled', new Date().toISOString(), rentalId],
+  );
+
+  return 'canceled';
+};
+
 export const rentalService = {
   async create(input: RentalCreateInput): Promise<number> {
     const db = await getDatabase();
@@ -347,6 +368,12 @@ export const rentalService = {
     );
 
     const rentalRow = rentalRows[0];
+    const normalizedStatus = normalizeStatus(rentalRow.status);
+    const statusWithRules = await expireQuoteIfNeeded(
+      rentalRow.id,
+      normalizedStatus,
+      rentalRow.quoteValidUntil,
+    );
 
     return {
       id: rentalRow.id,
@@ -361,7 +388,7 @@ export const rentalService = {
       currency: normalizeCurrency(rentalRow.currency),
       subtotal: Number(rentalRow.subtotal),
       total: Number(rentalRow.total),
-      status: normalizeStatus(rentalRow.status),
+      status: statusWithRules,
       quoteValidUntil: rentalRow.quoteValidUntil,
       notes: rentalRow.notes,
       createdAt: rentalRow.createdAt,

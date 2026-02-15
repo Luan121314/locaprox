@@ -11,6 +11,7 @@ import { execute, queryAll } from '../connection';
 const SETTINGS_KEYS = [
   'currency',
   'company_name',
+  'company_document',
   'company_logo_uri',
   'rental_start_reminder',
   'rental_end_reminder',
@@ -29,6 +30,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   pricingRules: DEFAULT_PRICING_RULES,
   currency: 'BRL',
   companyName: '',
+  companyDocument: '',
   companyLogoUri: '',
   rentalStartReminder: '1d',
   rentalEndReminder: '1h',
@@ -96,7 +98,7 @@ export const settingsService = {
       `
       SELECT key, value
       FROM app_settings
-      WHERE key IN (?, ?, ?, ?, ?, ?, ?, ?);
+      WHERE key IN (?, ?, ?, ?, ?, ?, ?, ?, ?);
       `,
       [...SETTINGS_KEYS],
     );
@@ -114,6 +116,7 @@ export const settingsService = {
       },
       currency: toCurrency(map.get('currency')),
       companyName: map.get('company_name') ?? DEFAULT_SETTINGS.companyName,
+      companyDocument: map.get('company_document') ?? DEFAULT_SETTINGS.companyDocument,
       companyLogoUri: map.get('company_logo_uri') ?? DEFAULT_SETTINGS.companyLogoUri,
       rentalStartReminder: toReminderOption(map.get('rental_start_reminder')),
       rentalEndReminder: toReminderOption(map.get('rental_end_reminder')),
@@ -126,6 +129,7 @@ export const settingsService = {
     const payload: Array<[string, string]> = [
       ['currency', input.currency],
       ['company_name', input.companyName.trim()],
+      ['company_document', input.companyDocument.trim()],
       ['company_logo_uri', input.companyLogoUri.trim()],
       ['rental_start_reminder', input.rentalStartReminder],
       ['rental_end_reminder', input.rentalEndReminder],

@@ -75,6 +75,7 @@ export const schemaStatements: string[] = [
   `ALTER TABLE rentals ADD COLUMN quote_valid_until TEXT;`,
   `INSERT OR IGNORE INTO app_settings (key, value) VALUES ('currency', 'BRL');`,
   `INSERT OR IGNORE INTO app_settings (key, value) VALUES ('company_name', '');`,
+  `INSERT OR IGNORE INTO app_settings (key, value) VALUES ('company_document', '');`,
   `INSERT OR IGNORE INTO app_settings (key, value) VALUES ('company_logo_uri', '');`,
   `INSERT OR IGNORE INTO app_settings (key, value) VALUES ('rental_start_reminder', '1d');`,
   `INSERT OR IGNORE INTO app_settings (key, value) VALUES ('rental_end_reminder', '1h');`,

@@ -612,7 +612,7 @@ export const RentalFormScreen = ({ navigation, route }: RentalFormScreenProps): 
     );
   };
 
-  const openNativeDatePicker = (target: 'start' | 'end'): void => {
+  const openNativeDatePicker = (target: 'start' | 'end' | 'quoteValidUntil'): void => {
     if (Platform.OS !== 'android' || !nativeDateTimePickerAndroid) {
       showDateTimePickerUnavailable();
       return;
@@ -620,7 +620,9 @@ export const RentalFormScreen = ({ navigation, route }: RentalFormScreenProps): 
 
     const currentDate = target === 'start'
       ? mergeBrDateAndTime(startDate, startTime)
-      : mergeBrDateAndTime(endDate, endTime);
+      : target === 'end'
+      ? mergeBrDateAndTime(endDate, endTime)
+      : parseBrDate(quoteValidUntil) ?? new Date();
 
     nativeDateTimePickerAndroid.open({
       value: currentDate,
@@ -634,6 +636,11 @@ export const RentalFormScreen = ({ navigation, route }: RentalFormScreenProps): 
 
         if (target === 'start') {
           setStartDate(formatted);
+          return;
+        }
+
+        if (target === 'quoteValidUntil') {
+          setQuoteValidUntil(formatted);
           return;
         }
 
@@ -967,6 +974,16 @@ export const RentalFormScreen = ({ navigation, route }: RentalFormScreenProps): 
             value={quoteValidUntil}
             onChangeText={setQuoteValidUntil}
           />
+          <Pressable
+            style={styles.dateTimeButton}
+            onPress={() => openNativeDatePicker('quoteValidUntil')}
+            hitSlop={BUTTON_HIT_SLOP}>
+            <Text style={styles.dateTimeButtonText}>
+              {quoteValidUntil
+                ? `Selecionado no calendario: ${quoteValidUntil}`
+                : 'Selecionar data no calendario'}
+            </Text>
+          </Pressable>
           <Text style={styles.warningText}>
             Orcamentos vencidos sao marcados como cancelada automaticamente.
           </Text>

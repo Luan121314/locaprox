@@ -147,6 +147,7 @@ export type AppSettings = {
   pricingRules: PricingRules;
   currency: CurrencyCode;
   companyName: string;
+  companyDocument: string;
   companyLogoUri: string;
   rentalStartReminder: NotificationReminderOption;
   rentalEndReminder: NotificationReminderOption;

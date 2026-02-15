@@ -1,9 +1,11 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
+  ImageSourcePropType,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -20,6 +22,29 @@ import { RootStackParamList } from '../types/navigation';
 import { parseDecimalInput } from '../utils/format';
 
 type SettingsScreenProps = NativeStackScreenProps<RootStackParamList, 'Settings'>;
+type ImagePickerAsset = {
+  uri?: string;
+};
+
+type ImagePickerResponse = {
+  didCancel?: boolean;
+  errorCode?: string;
+  errorMessage?: string;
+  assets?: ImagePickerAsset[];
+};
+
+type ImageLibraryOptions = {
+  mediaType?: 'photo' | 'video' | 'mixed';
+  selectionLimit?: number;
+  quality?: number;
+};
+
+type ImagePickerModule = {
+  launchImageLibrary: (
+    options: ImageLibraryOptions,
+    callback: (response: ImagePickerResponse) => void,
+  ) => void;
+};
 
 const BUTTON_HIT_SLOP = {
   top: 12,
@@ -46,6 +71,7 @@ type SettingsFormState = {
   monthlyFactor: string;
   currency: CurrencyCode;
   companyName: string;
+  companyDocument: string;
   companyLogoUri: string;
   rentalStartReminder: NotificationReminderOption;
   rentalEndReminder: NotificationReminderOption;
@@ -53,21 +79,54 @@ type SettingsFormState = {
 
 const suggestedRules = pricingRulesService.getSuggestedValues();
 
+const resolveLogoSource = (rawValue: string): ImageSourcePropType | null => {
+  const normalized = rawValue.trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  return { uri: normalized };
+};
+
+const loadImagePickerModule = (): ImagePickerModule | null => {
+  try {
+    const module = require('react-native-image-picker') as {
+      launchImageLibrary?: ImagePickerModule['launchImageLibrary'];
+    };
+
+    if (!module.launchImageLibrary) {
+      return null;
+    }
+
+    return {
+      launchImageLibrary: module.launchImageLibrary,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const nativeImagePicker = loadImagePickerModule();
+
 export const SettingsScreen = (_props: SettingsScreenProps): React.JSX.Element => {
   const bumpDataVersion = useAppStore(state => state.bumpDataVersion);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPickingLogo, setIsPickingLogo] = useState(false);
   const [form, setForm] = useState<SettingsFormState>({
     weeklyFactor: String(suggestedRules.weeklyFactor),
     fortnightlyFactor: String(suggestedRules.fortnightlyFactor),
     monthlyFactor: String(suggestedRules.monthlyFactor),
     currency: 'BRL',
     companyName: '',
+    companyDocument: '',
     companyLogoUri: '',
     rentalStartReminder: '1d',
     rentalEndReminder: '1h',
   });
+  const logoPreviewSource = useMemo(() => resolveLogoSource(form.companyLogoUri), [form.companyLogoUri]);
 
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
@@ -81,6 +140,7 @@ export const SettingsScreen = (_props: SettingsScreenProps): React.JSX.Element =
         monthlyFactor: String(settings.pricingRules.monthlyFactor),
         currency: settings.currency,
         companyName: settings.companyName,
+        companyDocument: settings.companyDocument,
         companyLogoUri: settings.companyLogoUri,
         rentalStartReminder: settings.rentalStartReminder,
         rentalEndReminder: settings.rentalEndReminder,
@@ -104,6 +164,53 @@ export const SettingsScreen = (_props: SettingsScreenProps): React.JSX.Element =
     setForm(current => ({ ...current, [field]: String(value) }));
   };
 
+  const pickLogoFromDevice = (): void => {
+    if (!nativeImagePicker) {
+      Alert.alert(
+        'Seletor indisponivel',
+        'Instale react-native-image-picker e gere um novo build para carregar imagem do dispositivo.',
+      );
+      return;
+    }
+
+    setIsPickingLogo(true);
+
+    nativeImagePicker.launchImageLibrary(
+      {
+        mediaType: 'photo',
+        selectionLimit: 1,
+        quality: 0.9,
+      },
+      response => {
+        setIsPickingLogo(false);
+
+        if (response.didCancel) {
+          return;
+        }
+
+        if (response.errorCode) {
+          Alert.alert(
+            'Erro',
+            response.errorMessage || 'Nao foi possivel carregar a imagem selecionada.',
+          );
+          return;
+        }
+
+        const selectedUri = response.assets?.[0]?.uri?.trim();
+
+        if (!selectedUri) {
+          Alert.alert('Erro', 'Nao foi possivel obter a imagem selecionada.');
+          return;
+        }
+
+        setForm(current => ({
+          ...current,
+          companyLogoUri: selectedUri,
+        }));
+      },
+    );
+  };
+
   const onSave = async (): Promise<void> => {
     const weeklyFactor = parseDecimalInput(form.weeklyFactor);
     const fortnightlyFactor = parseDecimalInput(form.fortnightlyFactor);
@@ -125,6 +232,7 @@ export const SettingsScreen = (_props: SettingsScreenProps): React.JSX.Element =
         },
         currency: form.currency,
         companyName: form.companyName,
+        companyDocument: form.companyDocument,
         companyLogoUri: form.companyLogoUri,
         rentalStartReminder: form.rentalStartReminder,
         rentalEndReminder: form.rentalEndReminder,
@@ -262,14 +370,34 @@ export const SettingsScreen = (_props: SettingsScreenProps): React.JSX.Element =
           onChangeText={value => setForm(current => ({ ...current, companyName: value }))}
         />
 
-        <Text style={styles.label}>Logo (URI ou caminho local)</Text>
+        <Text style={styles.label}>CPF/CNPJ da empresa</Text>
         <TextInput
           style={styles.input}
-          placeholder="Ex: https://.../logo.png"
+          placeholder="Ex: 12.345.678/0001-90"
           placeholderTextColor={colors.textMuted}
-          value={form.companyLogoUri}
-          onChangeText={value => setForm(current => ({ ...current, companyLogoUri: value }))}
+          value={form.companyDocument}
+          onChangeText={value => setForm(current => ({ ...current, companyDocument: value }))}
         />
+
+        <Text style={styles.label}>Logo da empresa</Text>
+        <Pressable
+          style={[styles.deviceLogoButton, isPickingLogo && styles.disabledButton]}
+          onPress={pickLogoFromDevice}
+          disabled={isPickingLogo}
+          hitSlop={BUTTON_HIT_SLOP}>
+          <Text style={styles.deviceLogoButtonText}>
+            {isPickingLogo ? 'Abrindo galeria...' : 'Carregar imagem do dispositivo'}
+          </Text>
+        </Pressable>
+
+        <Text style={styles.label}>Pre-visualizacao</Text>
+        <View style={styles.logoPreviewBox}>
+          {logoPreviewSource ? (
+            <Image source={logoPreviewSource} style={styles.logoPreviewImage} resizeMode="contain" />
+          ) : (
+            <Text style={styles.logoPreviewPlaceholder}>Nenhuma logo selecionada.</Text>
+          )}
+        </View>
       </View>
 
       <View style={styles.sectionCard}>
@@ -432,6 +560,38 @@ const styles = StyleSheet.create({
   },
   currencyOptionTextSelected: {
     color: colors.surface,
+  },
+  logoPreviewBox: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: '#FAFCFD',
+    minHeight: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
+  },
+  logoPreviewImage: {
+    width: '100%',
+    height: 100,
+  },
+  logoPreviewPlaceholder: {
+    color: colors.textMuted,
+    fontSize: 13,
+  },
+  deviceLogoButton: {
+    borderRadius: 10,
+    backgroundColor: colors.secondary,
+    paddingVertical: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    marginTop: 4,
+  },
+  deviceLogoButtonText: {
+    color: colors.primary,
+    fontWeight: '800',
+    fontSize: 13,
   },
   reminderGrid: {
     gap: 8,

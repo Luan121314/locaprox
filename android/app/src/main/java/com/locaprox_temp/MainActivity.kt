@@ -1,6 +1,9 @@
 package com.locaprox_temp
 
+import android.graphics.Color
 import android.os.Bundle
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -18,6 +21,14 @@ class MainActivity : ReactActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     SplashScreen.show(this)
     super.onCreate(savedInstanceState)
+
+    WindowCompat.setDecorFitsSystemWindows(window, true)
+    window.navigationBarColor = Color.parseColor("#202124")
+    window.statusBarColor = Color.parseColor("#0D2A3A")
+
+    val insetsController = WindowInsetsControllerCompat(window, window.decorView)
+    insetsController.isAppearanceLightNavigationBars = false
+    insetsController.isAppearanceLightStatusBars = false
   }
 
   /**

@@ -89,6 +89,45 @@ const resolveLogoSource = (rawValue: string): ImageSourcePropType | null => {
   return { uri: normalized };
 };
 
+const normalizeCompanyDocumentDigits = (value: string): string => {
+  return value.replace(/\D/g, '').slice(0, 14);
+};
+
+const formatCpf = (digits: string): string => {
+  const base = digits.slice(0, 11);
+  const part1 = base.slice(0, 3);
+  const part2 = base.slice(3, 6);
+  const part3 = base.slice(6, 9);
+  const part4 = base.slice(9, 11);
+
+  return `${part1}${part2 ? `.${part2}` : ''}${part3 ? `.${part3}` : ''}${part4 ? `-${part4}` : ''}`;
+};
+
+const formatCnpj = (digits: string): string => {
+  const base = digits.slice(0, 14);
+  const part1 = base.slice(0, 2);
+  const part2 = base.slice(2, 5);
+  const part3 = base.slice(5, 8);
+  const part4 = base.slice(8, 12);
+  const part5 = base.slice(12, 14);
+
+  return `${part1}${part2 ? `.${part2}` : ''}${part3 ? `.${part3}` : ''}${part4 ? `/${part4}` : ''}${part5 ? `-${part5}` : ''}`;
+};
+
+const formatCompanyDocument = (value: string): string => {
+  const digits = normalizeCompanyDocumentDigits(value);
+
+  if (!digits) {
+    return '';
+  }
+
+  if (digits.length <= 11) {
+    return formatCpf(digits);
+  }
+
+  return formatCnpj(digits);
+};
+
 const loadImagePickerModule = (): ImagePickerModule | null => {
   try {
     const module = require('react-native-image-picker') as {
@@ -127,6 +166,10 @@ export const SettingsScreen = (_props: SettingsScreenProps): React.JSX.Element =
     rentalEndReminder: '1h',
   });
   const logoPreviewSource = useMemo(() => resolveLogoSource(form.companyLogoUri), [form.companyLogoUri]);
+  const formattedCompanyDocument = useMemo(
+    () => formatCompanyDocument(form.companyDocument),
+    [form.companyDocument],
+  );
 
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
@@ -140,7 +183,7 @@ export const SettingsScreen = (_props: SettingsScreenProps): React.JSX.Element =
         monthlyFactor: String(settings.pricingRules.monthlyFactor),
         currency: settings.currency,
         companyName: settings.companyName,
-        companyDocument: settings.companyDocument,
+        companyDocument: normalizeCompanyDocumentDigits(settings.companyDocument),
         companyLogoUri: settings.companyLogoUri,
         rentalStartReminder: settings.rentalStartReminder,
         rentalEndReminder: settings.rentalEndReminder,
@@ -232,7 +275,7 @@ export const SettingsScreen = (_props: SettingsScreenProps): React.JSX.Element =
         },
         currency: form.currency,
         companyName: form.companyName,
-        companyDocument: form.companyDocument,
+        companyDocument: formatCompanyDocument(form.companyDocument),
         companyLogoUri: form.companyLogoUri,
         rentalStartReminder: form.rentalStartReminder,
         rentalEndReminder: form.rentalEndReminder,
@@ -375,8 +418,15 @@ export const SettingsScreen = (_props: SettingsScreenProps): React.JSX.Element =
           style={styles.input}
           placeholder="Ex: 12.345.678/0001-90"
           placeholderTextColor={colors.textMuted}
-          value={form.companyDocument}
-          onChangeText={value => setForm(current => ({ ...current, companyDocument: value }))}
+          keyboardType="number-pad"
+          value={formattedCompanyDocument}
+          onChangeText={value =>
+            setForm(current => ({
+              ...current,
+              companyDocument: normalizeCompanyDocumentDigits(value),
+            }))
+          }
+          maxLength={18}
         />
 
         <Text style={styles.label}>Logo da empresa</Text>
